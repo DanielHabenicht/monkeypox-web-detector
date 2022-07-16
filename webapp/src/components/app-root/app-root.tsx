@@ -10,6 +10,9 @@ import * as tf from '@tensorflow/tfjs';
 export class AppRoot {
   @State() cam;
   @State() picture;
+  @State() picture_width;
+  @State() picture_height;
+  @State() result;
   @State() _model;
 
   componentWillLoad() {
@@ -38,13 +41,30 @@ export class AppRoot {
       this.cam.addEventListener('picture', e => {
         this.picture = e.detail;
         console.log('Picture in base 64:', e.detail);
+        var i = new Image();
+
+        i.onload = () => {
+                this.picture_height = i.width;
+                this.picture_width = i.height;
+                console.log(this.picture_height, this.picture_width)
+        };
+
+        i.src = e.detail;
         // @ts-ignore
         this._model.predict(tf.tensor2d([5], [1, 1])).print();
+        this.result = this._model
+          .predict(tf.tensor2d([5], [1, 1]))
+          .as1D()
+          .argMax()
+          .dataSync()[0];
 
         this.cam.stop();
       });
       this.cam.addEventListener('backButton', () => console.log('backButton'));
-      this.cam.addEventListener('webcamStop', () => console.log('webcamStop'));
+      this.cam.addEventListener('webcamStop', () => {
+        // this.cam.stop();
+        console.log('webcamStop');
+      });
     }
   }
   render() {
@@ -57,12 +77,13 @@ export class AppRoot {
         <main>
           {this.picture == undefined ? (
             <div id="camera-wrapper">
-              <camera-component ref={el => (this.cam = el)} showPreview="false" allowGallery="true" />
+              <camera-component ref={el => (this.cam = el)} showPreview="true" allowGallery="true" />
             </div>
           ) : (
             <div>
               <p>Analyzing...</p>
-              <img src={this.picture} />
+              <img src={this.picture} width={this.picture_width} height={this.picture_height} />
+              {this.result != undefined ? <p>Result: {this.result}</p> : null}
             </div>
           )}
           {/* <camera-controller ref={el => (this.controller = el)}></camera-controller> */}
