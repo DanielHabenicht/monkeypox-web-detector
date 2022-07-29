@@ -16,6 +16,8 @@ export class AppRoot {
   @State() result;
   @State() _model;
 
+  @State() canvas;
+
   @State() labels = ['daisy', 'dandelion', 'roses', 'sunflowers', 'tulips'];
 
   componentWillLoad() {
@@ -77,9 +79,9 @@ export class AppRoot {
           this.result = this.labels[tf.argMax(score).dataSync()[0]] + ' with ' + confidence;
         };
 
-        // i.src = e.detail;
+        i.src = e.detail;
         i.crossOrigin = 'anonymous';
-        i.src = 'https://storage.googleapis.com/download.tensorflow.org/example_images/592px-Red_sunflower.jpg';
+        // i.src = 'https://storage.googleapis.com/download.tensorflow.org/example_images/592px-Red_sunflower.jpg';
 
         this.cam.stop();
       });
@@ -102,7 +104,9 @@ export class AppRoot {
       .then(webcam => {
         // Capture an image tensor at a specific point in time.
         webcam.capture().then(img => {
-          tf.browser.toPixels(img, this.canvas);
+          tf.browser.toPixels(img, this.canvas).then(data => {
+            // this.canvas
+          });
 
           var test = img;
           const offset = tf.scalar(255.0);
@@ -159,6 +163,7 @@ export class AppRoot {
               <img src={this.picture} width={this.picture_width} height={this.picture_height} />
             </div>
           )}
+          <canvas ref={el => (this.canvas = el)} width="320" height="240"></canvas>
           {this.result != undefined ? <p>Result: {this.result}</p> : null}
           {/* <camera-controller ref={el => (this.controller = el)}></camera-controller> */}
           {/* <button onClick={() => this.cam.flipCam()}>Flip</button>
