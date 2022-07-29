@@ -104,6 +104,7 @@ export class AppRoot {
       .then(webcam => {
         // Capture an image tensor at a specific point in time.
         webcam.capture().then(img => {
+          // @ts-ignore
           tf.browser.toPixels(img, this.canvas).then(data => {
             // this.canvas
           });
