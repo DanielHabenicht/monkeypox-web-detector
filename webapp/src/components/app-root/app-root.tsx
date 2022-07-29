@@ -48,7 +48,14 @@ export class AppRoot {
       this.player.srcObject = stream;
     };
 
-    navigator.mediaDevices.getUserMedia({ video: true }).then(handleSuccess);
+    navigator.mediaDevices
+      .getUserMedia({
+        audio: false,
+        video: {
+          facingMode: 'environment',
+        },
+      })
+      .then(handleSuccess);
 
     if (this.cam != undefined) {
       this.cam.addEventListener('picture', e => {
