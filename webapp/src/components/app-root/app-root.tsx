@@ -91,25 +91,30 @@ export class AppRoot {
     }
   }
 
-  async takePicture() {
+  takePicture() {
     // Capture an image from the webcam using the Tensorflow.js data API
     //and store it as a tensor (resize to 224 x 224 size for mobilenet delivery).
-    const webcam = await tf.data.webcam(this.player, {
-      resizeWidth: 180,
-      resizeHeight: 180,
-    });
-    // Capture an image tensor at a specific point in time.
-    const img = await webcam.capture();
+    tf.data
+      .webcam(this.player, {
+        resizeWidth: 180,
+        resizeHeight: 180,
+      })
+      .then(webcam => {
+        // Capture an image tensor at a specific point in time.
+        webcam.capture().then(img => {
+          tf.browser.toPixels(img, this.canvas);
 
-    var test = img;
-    const offset = tf.scalar(255.0);
-    const normalized = tf.expandDims(test.div(offset), 0);
+          var test = img;
+          const offset = tf.scalar(255.0);
+          const normalized = tf.expandDims(test.div(offset), 0);
 
-    var score = tf.softmax(tf.tensor(this._model.predict(normalized).arraySync()[0]));
-    var confidence = tf.max(score).dataSync()[0];
-    this.result = this.labels[tf.argMax(score).dataSync()[0]] + ' with ' + confidence;
+          var score = tf.softmax(tf.tensor(this._model.predict(normalized).arraySync()[0]));
+          var confidence = tf.max(score).dataSync()[0];
+          this.result = this.labels[tf.argMax(score).dataSync()[0]] + ' with ' + confidence;
 
-    img.dispose();
+          img.dispose();
+        });
+      });
   }
   render() {
     return (
