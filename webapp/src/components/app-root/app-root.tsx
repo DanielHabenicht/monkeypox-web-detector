@@ -10,6 +10,7 @@ import * as tf from '@tensorflow/tfjs';
 export class AppRoot {
   @State() cam;
   @State() player;
+  @State() video;
   @State() picture;
   @State() picture_width;
   @State() picture_height;
@@ -43,21 +44,27 @@ export class AppRoot {
     // });
   }
 
-  componentDidLoad() {
+  async componentDidLoad() {
     // If the permission to use the webcam is approved, the webcam streaming video is designated as the source object of the "player".
-    var handleSuccess = stream => {
-      //@ts-ignore
-      this.player.srcObject = stream;
-    };
+    // var handleSuccess = stream => {
+    //   //@ts-ignore
+    //   this.player.srcObject = stream;
+    // };
 
-    navigator.mediaDevices
-      .getUserMedia({
-        audio: false,
-        video: {
-          facingMode: 'environment',
-        },
-      })
-      .then(handleSuccess);
+    // navigator.mediaDevices
+    //   .getUserMedia({
+    //     audio: false,
+    //     video: {
+    //       facingMode: 'environment',
+    //     },
+    //   })
+    //   .then(handleSuccess);
+
+    this.video = await tf.data.webcam(this.player, {
+      resizeWidth: 180,
+      resizeHeight: 180,
+      facingMode: 'environment',
+    });
 
     if (this.cam != undefined) {
       this.cam.addEventListener('picture', e => {
@@ -93,33 +100,26 @@ export class AppRoot {
     }
   }
 
-  takePicture() {
+  async takePicture() {
     // Capture an image from the webcam using the Tensorflow.js data API
     //and store it as a tensor (resize to 224 x 224 size for mobilenet delivery).
-    tf.data
-      .webcam(this.player, {
-        resizeWidth: 180,
-        resizeHeight: 180,
-      })
-      .then(webcam => {
-        // Capture an image tensor at a specific point in time.
-        webcam.capture().then(img => {
-          // @ts-ignore
-          tf.browser.toPixels(img, this.canvas).then(data => {
-            // this.canvas
-          });
 
-          var test = img;
-          const offset = tf.scalar(255.0);
-          const normalized = tf.expandDims(test.div(offset), 0);
+    const img = await this.video.capture();
+    // video.stop();
+    // tf.browser.toPixels(img, this.canvas).then(data => {
+    //   // this.canvas
+    // });
 
-          var score = tf.softmax(tf.tensor(this._model.predict(normalized).arraySync()[0]));
-          var confidence = tf.max(score).dataSync()[0];
-          this.result = this.labels[tf.argMax(score).dataSync()[0]] + ' with ' + confidence;
+    var test = img;
+    const offset = tf.scalar(255.0);
+    const normalized = tf.expandDims(test.div(offset), 0);
 
-          img.dispose();
-        });
-      });
+    var score = tf.softmax(tf.tensor(this._model.predict(normalized).arraySync()[0]));
+    var confidence = tf.max(score).dataSync()[0];
+    this.result = this.labels[tf.argMax(score).dataSync()[0]] + ' with ' + confidence;
+
+    img.dispose();
+    console.log('takePicture');
   }
   render() {
     return (
@@ -129,14 +129,14 @@ export class AppRoot {
         </header>
 
         <main>
-          <button
+          {/* <button
             onClick={() => {
               this.cam.start(1);
               this.picture = undefined;
             }}
           >
             Start Camera
-          </button>
+          </button> */}
 
           <button
             onClick={() => {
@@ -144,7 +144,7 @@ export class AppRoot {
               this.picture = undefined;
             }}
           >
-            Take Picture Camera
+            Take Picture
           </button>
           <div>
             Detectable Labels:
@@ -155,9 +155,9 @@ export class AppRoot {
             </ul>
           </div>
           <video ref={el => (this.player = el)} width="320" height="240" autoplay playsinline muted></video>
-          {/* <div id="camera-wrapper">
+          <div id="camera-wrapper">
             <camera-component ref={el => (this.cam = el)} showPreview="true" allowGallery="true" />
-          </div> */}
+          </div>
           {this.picture == undefined ? null : (
             <div>
               <p>Analyzing...</p>
