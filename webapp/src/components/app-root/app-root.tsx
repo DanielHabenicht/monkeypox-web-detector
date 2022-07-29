@@ -9,13 +9,14 @@ import * as tf from '@tensorflow/tfjs';
 })
 export class AppRoot {
   @State() cam;
+  @State() player;
   @State() picture;
   @State() picture_width;
   @State() picture_height;
   @State() result;
   @State() _model;
 
-  @State() labels = ['daisy', 'dandelion', 'roses', 'sunflowers', 'tulips']
+  @State() labels = ['daisy', 'dandelion', 'roses', 'sunflowers', 'tulips'];
 
   componentWillLoad() {
     // @ts-ignore
@@ -41,31 +42,37 @@ export class AppRoot {
   }
 
   componentDidLoad() {
+    // If the permission to use the webcam is approved, the webcam streaming video is designated as the source object of the "player".
+    var handleSuccess = stream => {
+      //@ts-ignore
+      this.player.srcObject = stream;
+    };
+
+    navigator.mediaDevices.getUserMedia({ video: true }).then(handleSuccess);
+
     if (this.cam != undefined) {
-      this.cam.start(1);
       this.cam.addEventListener('picture', e => {
         this.picture = e.detail;
         console.log('Picture in base 64:', e.detail);
         var i = new Image();
 
         i.onload = () => {
-            this.picture_height = i.width;
-            this.picture_width = i.height;
-            console.log(this.picture_height, this.picture_width);
-    
-            var test = tf.browser.fromPixels(i).resizeBilinear([180, 180]);
-            console.log(test.shape);
-            const offset = tf.scalar(255.0);
-            const normalized = tf.expandDims(test.div(offset), 0);
+          this.picture_height = i.width;
+          this.picture_width = i.height;
+          console.log(this.picture_height, this.picture_width);
 
-            var score = tf.softmax(tf.tensor(this._model.predict(normalized).arraySync()[0]));
-            var confidence = tf.max(score).dataSync()[0];
-            this.result = this.labels[tf.argMax(score).dataSync()[0]] + " with " + confidence;
-          };
+          var test = tf.browser.fromPixels(i).resizeBilinear([180, 180]);
+          const offset = tf.scalar(255.0);
+          const normalized = tf.expandDims(test.div(offset), 0);
 
-        i.src = e.detail;
+          var score = tf.softmax(tf.tensor(this._model.predict(normalized).arraySync()[0]));
+          var confidence = tf.max(score).dataSync()[0];
+          this.result = this.labels[tf.argMax(score).dataSync()[0]] + ' with ' + confidence;
+        };
+
+        // i.src = e.detail;
         i.crossOrigin = 'anonymous';
-        // i.src = 'https://storage.googleapis.com/download.tensorflow.org/example_images/592px-Red_sunflower.jpg';
+        i.src = 'https://storage.googleapis.com/download.tensorflow.org/example_images/592px-Red_sunflower.jpg';
 
         this.cam.stop();
       });
@@ -76,6 +83,27 @@ export class AppRoot {
       });
     }
   }
+
+  async takePicture() {
+    // Capture an image from the webcam using the Tensorflow.js data API
+    //and store it as a tensor (resize to 224 x 224 size for mobilenet delivery).
+    const webcam = await tf.data.webcam(this.player, {
+      resizeWidth: 180,
+      resizeHeight: 180,
+    });
+    // Capture an image tensor at a specific point in time.
+    const img = await webcam.capture();
+
+    var test = img;
+    const offset = tf.scalar(255.0);
+    const normalized = tf.expandDims(test.div(offset), 0);
+
+    var score = tf.softmax(tf.tensor(this._model.predict(normalized).arraySync()[0]));
+    var confidence = tf.max(score).dataSync()[0];
+    this.result = this.labels[tf.argMax(score).dataSync()[0]] + ' with ' + confidence;
+
+    img.dispose();
+  }
   render() {
     return (
       <div>
@@ -84,17 +112,42 @@ export class AppRoot {
         </header>
 
         <main>
-          {this.picture == undefined ? (
-            <div id="camera-wrapper">
-              <camera-component ref={el => (this.cam = el)} showPreview="true" allowGallery="true" />
-            </div>
-          ) : (
+          <button
+            onClick={() => {
+              this.cam.start(1);
+              this.picture = undefined;
+            }}
+          >
+            Start Camera
+          </button>
+
+          <button
+            onClick={() => {
+              this.takePicture();
+              this.picture = undefined;
+            }}
+          >
+            Take Picture Camera
+          </button>
+          <div>
+            Detectable Labels:
+            <ul>
+              {this.labels.map(label => (
+                <li>{label}</li>
+              ))}
+            </ul>
+          </div>
+          <video ref={el => (this.player = el)} width="320" height="240" autoplay playsinline muted></video>
+          {/* <div id="camera-wrapper">
+            <camera-component ref={el => (this.cam = el)} showPreview="true" allowGallery="true" />
+          </div> */}
+          {this.picture == undefined ? null : (
             <div>
               <p>Analyzing...</p>
               <img src={this.picture} width={this.picture_width} height={this.picture_height} />
-              {this.result != undefined ? <p>Result: {this.result}</p> : null}
             </div>
           )}
+          {this.result != undefined ? <p>Result: {this.result}</p> : null}
           {/* <camera-controller ref={el => (this.controller = el)}></camera-controller> */}
           {/* <button onClick={() => this.cam.flipCam()}>Flip</button>
           <button onClick={() => this.cam.takePicture()}>Take picture</button>
